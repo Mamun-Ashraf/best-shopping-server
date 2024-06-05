@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require('express');
 const app = express()
-// const jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT;
@@ -9,30 +9,30 @@ const port = process.env.PORT;
 app.use(cors());
 app.use(express.json());
 
-// function createToken(user) {
-//     const token = jwt.sign(
-//         {
-//             email: user.email,
-//         },
-//         "secret",
-//         { expiresIn: "1y" }
-//     );
-//     return token;
-// }
+function createToken(user) {
+    const token = jwt.sign(
+        {
+            email: user.email,
+        },
+        "secret",
+        { expiresIn: "1y" }
+    );
+    return token;
+}
 
 
-// function verifyToken(req, res, next) {
-//     const token = req.headers.authorization.split(" ")[1];
-//     if (!token) {
-//         return res.send("You are not authorized");
-//     }
-//     const verify = jwt.verify(token, "secret");
-//     if (!verify?.email) {
-//         return res.send("You are not authorized");
-//     }
-//     req.user = verify.email;
-//     next();
-// }
+function verifyToken(req, res, next) {
+    const token = req.headers.authorization.split(" ")[1];
+    if (!token) {
+        return res.send("You are not authorized");
+    }
+    const verify = jwt.verify(token, "secret");
+    if (!verify?.email) {
+        return res.send("You are not authorized");
+    }
+    req.user = verify.email;
+    next();
+}
 
 const uri = process.env.DATABASE_URL;
 
@@ -69,7 +69,7 @@ async function run() {
         app.post("/user", async (req, res) => {
             const user = req.body;
 
-            // const token = createToken(user);
+            const token = createToken(user);
             const isUserExist = await userCollection.findOne({ email: user?.email });
             if (isUserExist?._id) {
                 return res.send({
@@ -82,7 +82,7 @@ async function run() {
             return res.send({ token });
         });
 
-        app.patch("/user/:email", async (req, res) => {
+        app.patch("/user/:email", verifyToken, async (req, res) => {
             const email = req.params.email;
             const userData = req.body;
             const result = await userCollection.updateOne(
@@ -108,13 +108,13 @@ async function run() {
             res.send(productData);
         });
 
-        app.post("/product", async (req, res) => {
+        app.post("/product", verifyToken, async (req, res) => {
             const productData = req.body;
             const result = await productCollection.insertOne(productData);
             res.send(result);
         });
 
-        app.patch("/product/:id", async (req, res) => {
+        app.patch("/product/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             const updatedData = req.body;
             const result = await productCollection.updateOne(
@@ -123,7 +123,7 @@ async function run() {
             );
             res.send(result);
         });
-        app.delete("/product/:id", async (req, res) => {
+        app.delete("/product/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             const result = await productCollection.deleteOne({ _id: new ObjectId(id) });
             res.send(result);
